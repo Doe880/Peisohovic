@@ -1,0 +1,7 @@
+pandas==1.5.3
+pyspark==3.4.0
+streamlit==1.22.0
+plotly==5.13.0
+alpha_vantage==2.3.1
+python-dotenv==1.0.0
+requests>=2.25.0
