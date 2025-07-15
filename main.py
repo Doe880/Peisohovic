@@ -1,28 +1,15 @@
-import os
-import sys
 import streamlit as st
-import atexit
 from data_loader import fetch_stock_data, prepare_data_for_spark
-from spark_processor import SparkDataProcessor
+from spark_processor import PandasDataProcessor  # pandas-версия процессора
 from charts import plot_live_prices, plot_summary_stats
 from config import TICKERS
-
-# Указание Python-интерпретатора для Sparkpython -m streamlit run main.py
-venv_path = os.path.dirname(os.path.dirname(sys.executable))
-os.environ["PYSPARK_PYTHON"] = os.path.join(venv_path, "Scripts", "python.exe")
-os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
 
 # Настройка интерфейса Streamlit
 st.set_page_config(page_title="Financial Streaming Dashboard", layout="wide")
 st.title("📈 Real-Time Stock Market Dashboard")
 
-# Инициализация Spark
-spark_processor = SparkDataProcessor()
-
-@atexit.register
-def cleanup():
-    if spark_processor.spark is not None:
-        spark_processor.spark.stop()
+# Инициализация pandas-процессора
+data_processor = PandasDataProcessor()
 
 # Кэшируем загрузку и обработку данных
 @st.cache_data(ttl=120, show_spinner="🔄 Загружаем данные с рынка...")
@@ -36,8 +23,8 @@ def load_and_process_data():
         if prepared is None or prepared.empty:
             return None, None
 
-        # process_data уже возвращает pandas DataFrame, toPandas() не нужен
-        processed = spark_processor.process_data(prepared)
+        # Обработка данных pandas-процессором (возвращает pandas DataFrame)
+        processed = data_processor.process_data(prepared)
         return prepared, processed if processed is not None else None
     except Exception as e:
         st.error(f"❌ Ошибка при загрузке или обработке данных: {e}")
@@ -70,3 +57,4 @@ if processed_data is not None:
 
 # Автообновление
 st.caption("🔄 Данные обновляются автоматически каждые 2 минуты.")
+
