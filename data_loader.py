@@ -21,11 +21,11 @@ def fetch_stock_data():
             }.get(interval)
 
             if function is None:
-                logger.warning(f"\u26a0\ufe0f Неподдерживаемый интервал: {interval}")
+                logger.warning(f"⚠️ Неподдерживаемый интервал: {interval}")
                 continue
 
             for attempt in range(1, MAX_RETRIES + 1):
-                logger.info(f"\ud83d\udcc5 [{ticker}] Попытка {attempt}: {function}")
+                logger.info(f"📅 [{ticker}] Попытка {attempt}: {function}")
                 params = {
                     "function": function,
                     "symbol": ticker,
@@ -60,28 +60,39 @@ def fetch_stock_data():
                     break
 
                 except Exception as e:
-                    logger.error(f"\u274c Ошибка загрузки {ticker} ({function}): {e}")
+                    logger.error(f"❌ Ошибка загрузки {ticker} ({function}): {e}")
                     time.sleep(RETRY_DELAY)
 
             if success:
                 break
 
         if not success:
-            logger.error(f"\u2757 Не удалось загрузить данные для {ticker}")
+            logger.error(f"‼️ Не удалось загрузить данные для {ticker}")
 
     if not all_data:
-        logger.error("\u2757 Данные не загружены ни для одного тикера.")
+        logger.error("‼️ Данные не загружены ни для одного тикера.")
         return None
 
     return pd.concat(all_data, ignore_index=True)
 
+
 def prepare_data_for_spark(raw_data):
     if raw_data is None or raw_data.empty:
-        logger.warning("\u2757 Пустой DataFrame")
+        logger.warning("⚠️ Пустой DataFrame")
         return None
+
     try:
-        df = raw_data.dropna(subset=["Close"])
+        df = raw_data.copy()
+
+        # Приводим значения к числовому типу
+        df["Close"] = pd.to_numeric(df["Close"], errors="coerce")
+        df["Volume"] = pd.to_numeric(df["Volume"], errors="coerce")
+
+        # Удаляем строки, где нет ключевых значений
+        df = df.dropna(subset=["Close", "Volume"])
+
         return df
+
     except Exception as e:
-        logger.error(f"\u274c Ошибка подготовки данных: {e}")
+        logger.error(f"❌ Ошибка подготовки данных: {e}")
         return None
